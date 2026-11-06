@@ -594,6 +594,20 @@ class MiotCloud(micloud.MiCloud):
     def _login_request(self, login_data=None):
         self._init_session(not login_data)
         location = ''
+        if not login_data and self.pass_token:
+            # A valid passToken answers serviceLogin with a ready location, so
+            # follow it instead of falling through to the password step, which
+            # would trigger Xiaomi's SMS challenge.
+            try:
+                pass_auth = self._login_step1()
+            except Exception:  # noqa: BLE001 - fall back to the password flow
+                pass_auth = {}
+            if pass_loc := pass_auth.get('location'):
+                pass_rsp = self.account_get(
+                    pass_loc, allow_redirects=True, response=True,
+                )
+                if self._finalize_login_response(pass_rsp) and self.ssecurity:
+                    return True
         auth = self.attrs.pop('login_data', {})
         if not login_data:
             pass
@@ -903,6 +917,8 @@ class MiotCloud(micloud.MiCloud):
             'ssecurity': self.ssecurity,
             'sid': self.sid,
             'device_id': self.client_id,
+            'pass_token': self.pass_token,
+            'cuser_id': self.cuser_id,
         }
 
     @staticmethod
@@ -927,6 +943,14 @@ class MiotCloud(micloud.MiCloud):
             config.update(sdt)
             mic.service_token = config.get('service_token')
             mic.ssecurity = config.get('ssecurity')
+            mic.pass_token = config.get('pass_token') or mic.pass_token
+            mic.cuser_id = config.get('cuser_id') or mic.cuser_id
+            if mic.pass_token:
+                mic.cookies.update({
+                    'passToken': mic.pass_token,
+                    'cUserId': mic.cuser_id or '',
+                    'userId': str(mic.user_id or ''),
+                })
             did = config.get('device_id') or ''
             if did and len(did) <= 32:
                 mic.client_id = did
