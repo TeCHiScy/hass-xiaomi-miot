@@ -254,17 +254,34 @@ class MiotCloud(micloud.MiCloud):
             #   4. Network/timeout/parse/unknown → None (no callback)
             try:
                 ok = await self.async_relogin()
-            except (MiCloudAuthenticationError, MiCloudNeedVerify):
+            except (MiCloudAuthenticationError, MiCloudNeedVerify) as exc:
+                _LOGGER.warning(
+                    'xiaomi_miot auth probe: micoapi relogin failed (%s): %s',
+                    type(exc).__name__, exc,
+                )
                 return await _invoke_callback_or_none(False)
-            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as exc:
+                _LOGGER.warning(
+                    'xiaomi_miot auth probe: micoapi relogin network error (%s): %s',
+                    type(exc).__name__, exc,
+                )
                 return None
-            except MiCloudException:
+            except MiCloudException as exc:
                 # Fresh captcha URL triggered this; step2 populated attrs before
                 # raising MiCloudException("Xiaomi login requires captcha").
-                if self._has_complete_captcha():
+                captcha = self._has_complete_captcha()
+                _LOGGER.warning(
+                    'xiaomi_miot auth probe: micoapi relogin MiCloudException (%s): %s; captcha=%s',
+                    type(exc).__name__, exc, captcha,
+                )
+                if captcha:
                     return await _invoke_callback_or_none(False)
                 return None
-            except Exception:
+            except Exception as exc:
+                _LOGGER.warning(
+                    'xiaomi_miot auth probe: micoapi relogin unexpected (%s): %s',
+                    type(exc).__name__, exc, exc_info=True,
+                )
                 return None
             if ok:
                 return True

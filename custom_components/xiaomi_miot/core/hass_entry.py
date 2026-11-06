@@ -165,6 +165,10 @@ class HassEntry:
     async def async_auth_failed(self, sid: CloudSid) -> None:
         if isinstance(sid, str):
             sid = CloudSid(sid)
+        _LOGGER.warning(
+            'xiaomi_miot auth failed: sid=%s state=%s',
+            sid.value, self.entry.state, stack_info=True,
+        )
         if sid not in REAUTH_SIDS:
             return
         state = self.entry.state
