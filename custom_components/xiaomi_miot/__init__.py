@@ -25,7 +25,7 @@ from homeassistant.const import (
     SERVICE_RELOAD,
 )
 from homeassistant.helpers.entity import ToggleEntity, EntityCategory
-from homeassistant.config_entries import ConfigEntry, ConfigEntryAuthFailed
+from homeassistant.config_entries import ConfigEntry, ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.reload import async_integration_yaml_config
@@ -299,6 +299,8 @@ async def async_setup_xiaomi_cloud(hass: hass_core.HomeAssistant, config_entry: 
         return False
     except Exception:
         return False
+    if ok is None:
+        raise ConfigEntryNotReady('Xiaomi cloud unreachable')
     if not ok:
         raise ConfigEntryAuthFailed('Xiaomi authentication failed for this account')
     config[CONF_XIAOMI_CLOUD] = cloud
